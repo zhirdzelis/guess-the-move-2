@@ -1,102 +1,69 @@
 <!DOCTYPE html>
 <html lang="lv">
-
 <head>
 <meta charset="UTF-8">
-<title>Guess the Move</title>
-
-<link rel="stylesheet" href="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
-
-<script src="https://cdn.jsdelivr.net/npm/chess.js@0.10.3/chess.min.js"></script>
-<script src="https://unpkg.com/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
-
+<title>Šahs vs Stockfish (teksta demo)</title>
 <style>
-body { font-family: sans-serif; }
-#eval { margin-top: 10px; font-size: 1.2em; }
+body { font-family: sans-serif; padding: 20px; }
+#log { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; background: #f9f9f9; }
+input { padding: 5px; font-size: 1em; width: 80px; }
+button { padding: 5px; font-size: 1em; }
 </style>
 </head>
-
 <body>
 
-<h2>Uzmini gājienu</h2>
-<div id="board" style="width: 400px;"></div>
-<div id="eval">Izdari gājienu</div>
+<h2>Šahs vs Stockfish (teksta demo)</h2>
+
+<div id="log">Spēle sākas...</div>
+<input type="text" id="move" placeholder="e2e4">
+<button onclick="makeMove()">Gājiens</button>
 
 <script>
-// ====================
-// Šaha loģika
-// ====================
-const game = new Chess();
-
-// Morphy – Konsultanti (balto gājiens)
-game.load("rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 0 4");
-
-// Šaha dēlis (Chessboard.js)
-const board = Chessboard('board', {
-  draggable: true,
-  position: game.fen(),
-  onDrop: onDrop
-});
-
-// ====================
-// Stockfish INIT
-// ====================
 const engine = new Worker("stockfish.js");
 let engineReady = false;
+let currentFEN = "startpos";
 
-engine.onmessage = function (e) {
-  const line = e.data;
+engine.onmessage = function(e) {
+    const line = e.data;
 
-  if (line === "uciok") {
-    engine.postMessage("isready");
-    return;
-  }
+    if (line === "uciok") { engine.postMessage("isready"); return; }
+    if (line === "readyok") { engineReady = true; log("Stockfish gatavs!"); return; }
 
-  if (line === "readyok") {
-    engineReady = true;
-    console.log("Stockfish ready");
-    return;
-  }
-
-  if (line.startsWith("bestmove")) {
-    console.log("Best move:", line);
-    return;
-  }
-
-  if (line.includes("score cp")) {
-    const cp = parseInt(line.split("score cp ")[1]) / 100;
-
-    let label = "❌ Kļūda";
-    if (Math.abs(cp) < 0.2) label = "⭐ Precīzs";
-    else if (Math.abs(cp) < 0.6) label = "✔ Labs";
-    else if (Math.abs(cp) < 1.2) label = "⚠ Neprecīzs";
-
-    document.getElementById("eval").innerText =
-      `Novērtējums: ${cp.toFixed(2)} ${label}`;
-  }
+    if (line.startsWith("bestmove")) {
+        const move = line.split(" ")[1];
+        log("Stockfish: " + move);
+        currentFEN = updateFEN(move, currentFEN); // tikai simboliski, FEN atjaunošana nav obligāta
+    }
 };
 
+// Sāk Stockfish
 engine.postMessage("uci");
 
-// ====================
-// MOVE HANDLING
-// ====================
-function onDrop(from, to) {
-  if (!engineReady) {
-    alert("Stockfish vēl ielādējas, pagaidi 1–2 sekundes");
-    return 'snapback';
-  }
+function log(msg) {
+    const logDiv = document.getElementById("log");
+    logDiv.innerHTML += "<div>> " + msg + "</div>";
+    logDiv.scrollTop = logDiv.scrollHeight;
+}
 
-  const move = game.move({ from, to, promotion: 'q' });
-  if (!move) return 'snapback';
+function makeMove() {
+    const input = document.getElementById("move");
+    const move = input.value.trim();
+    if (!move) return;
 
-  board.position(game.fen());
+    log("Tu: " + move);
+    input.value = "";
 
-  engine.postMessage("position fen " + game.fen());
-  engine.postMessage("go depth 15");
+    if (engineReady) {
+        engine.postMessage("position startpos moves " + move);
+        engine.postMessage("go depth 10");
+    }
+}
+
+// Vienkārša vietas turēšana FEN atjaunošanai (var ignorēt vizuāli)
+function updateFEN(move, fen) {
+    return fen + " " + move;
 }
 </script>
 
 </body>
 </html>
-
