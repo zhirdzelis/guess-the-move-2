@@ -11,59 +11,45 @@ button { padding: 5px; font-size: 1em; }
 </style>
 </head>
 <body>
-
-<h2>Šahs vs Stockfish (teksta demo)</h2>
-
-<div id="log">Spēle sākas...</div>
-<input type="text" id="move" placeholder="e2e4">
-<button onclick="makeMove()">Gājiens</button>
+<h2>Spēlē pret Stockfish</h2>
+<div id="board" style="width: 400px;"></div>
+<div id="eval">Tavs gājiens...</div>
 
 <script>
+const game = new Chess();
+const board = Chessboard('board', {
+  draggable: true,
+  position: 'start',
+  onDrop: onDrop
+});
+
 const engine = new Worker("stockfish.js");
 let engineReady = false;
-let currentFEN = "startpos";
 
 engine.onmessage = function(e) {
-    const line = e.data;
-
-    if (line === "uciok") { engine.postMessage("isready"); return; }
-    if (line === "readyok") { engineReady = true; log("Stockfish gatavs!"); return; }
-
-    if (line.startsWith("bestmove")) {
-        const move = line.split(" ")[1];
-        log("Stockfish: " + move);
-        currentFEN = updateFEN(move, currentFEN); // tikai simboliski, FEN atjaunošana nav obligāta
-    }
+  const line = e.data;
+  if(line === "uciok") { engine.postMessage("isready"); return; }
+  if(line === "readyok") { engineReady = true; console.log("Stockfish ready"); return; }
+  if(line.startsWith("bestmove")) {
+      const move = line.split(" ")[1];
+      game.move({from: move.slice(0,2), to: move.slice(2,4), promotion:'q'});
+      board.position(game.fen());
+      document.getElementById("eval").innerText = "Stockfish: " + move;
+  }
 };
-
-// Sāk Stockfish
 engine.postMessage("uci");
 
-function log(msg) {
-    const logDiv = document.getElementById("log");
-    logDiv.innerHTML += "<div>> " + msg + "</div>";
-    logDiv.scrollTop = logDiv.scrollHeight;
-}
-
-function makeMove() {
-    const input = document.getElementById("move");
-    const move = input.value.trim();
-    if (!move) return;
-
-    log("Tu: " + move);
-    input.value = "";
-
-    if (engineReady) {
-        engine.postMessage("position startpos moves " + move);
-        engine.postMessage("go depth 10");
-    }
-}
-
-// Vienkārša vietas turēšana FEN atjaunošanai (var ignorēt vizuāli)
-function updateFEN(move, fen) {
-    return fen + " " + move;
+function onDrop(from, to) {
+  const move = game.move({from, to, promotion:'q'});
+  if(!move) return 'snapback';
+  board.position(game.fen());
+  document.getElementById("eval").innerText = "Tavs gājiens: " + from + to;
+  if(engineReady) {
+      engine.postMessage("position fen " + game.fen());
+      engine.postMessage("go depth 10");
+  }
 }
 </script>
-
 </body>
 </html>
+
