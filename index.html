@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<title>Guess the Move – Morphy</title>
+
+<link rel="stylesheet"
+ href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard.min.js"></script>
+
+<style>
+body { font-family: sans-serif; }
+#eval { font-size: 1.2em; margin-top: 10px; }
+</style>
+</head>
+
+<body>
+<h2>Uzmini gājienu</h2>
+<div id="board" style="width: 400px"></div>
+<div id="eval">Izdari gājienu</div>
+
+<script>
+const game = new Chess();
+
+// Morphy – Konsultanti (pozīcija pirms kombinācijas)
+game.load("rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 0 4");
+
+const board = Chessboard('board', {
+  draggable: true,
+  position: game.fen(),
+  onDrop: onDrop
+});
+
+const engine = new Worker("stockfish.js");
+
+engine.postMessage("uci");
+engine.postMessage("isready");
+
+function onDrop(source, target) {
+  const move = game.move({
+    from: source,
+    to: target,
+    promotion: 'q'
+  });
+
+  if (move === null) return 'snapback';
+
+  board.position(game.fen());
+  analyzePosition();
+}
+
+function analyzePosition() {
+  engine.postMessage("position fen " + game.fen());
+  engine.postMessage("go depth 15");
+
+  engine.onmessage = function (event) {
+    const line = event.data;
+
+    if (line.startsWith("info depth 15 score")) {
+      let score = line.includes("cp")
+        ? parseInt(line.split("cp")[1]) / 100
+        : "mate";
+
+      let text = "Novērtējums: " + score;
+
+      if (score !== "mate") {
+        if (Math.abs(score) < 0.2) text += " ⭐ Precīzs";
+        else if (Math.abs(score) < 0.6) text += " ✔ Labs";
+        else if (Math.abs(score) < 1.2) text += " ⚠ Neprecīzs";
+        else text += " ❌ Kļūda";
+      }
+
+      document.getElementById("eval").innerText = text;
+    }
+  };
+}
+</script>
+</body>
+</html>
