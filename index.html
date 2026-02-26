@@ -1,30 +1,16 @@
 <!DOCTYPE html>
 <html lang="lv">
-<head>
+
 <meta charset="UTF-8">
 <title>Guess the Move – Morphy</title>
 
 <link rel="stylesheet"
  href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard.min.css">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard.min.js"></script>
-
-<style>
-body { font-family: sans-serif; }
-#eval { font-size: 1.2em; margin-top: 10px; }
-</style>
-</head>
-
-<body>
-<h2>Uzmini gājienu</h2>
-<div id="board" style="width: 400px"></div>
-<div id="eval">Izdari gājienu</div>
-
 <script>
 const game = new Chess();
 
-// Morphy – Konsultanti (pozīcija pirms kombinācijas)
+// Morphy – Konsultanti (balto gājiens)
 game.load("rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 0 4");
 
 const board = Chessboard('board', {
@@ -33,49 +19,64 @@ const board = Chessboard('board', {
   onDrop: onDrop
 });
 
+// ====================
+// Stockfish INIT
+// ====================
 const engine = new Worker("stockfish.js");
+let engineReady = false;
+
+engine.onmessage = function (e) {
+  const line = e.data;
+
+  if (line === "uciok") {
+    engine.postMessage("isready");
+    return;
+  }
+
+  if (line === "readyok") {
+    engineReady = true;
+    console.log("Stockfish ready");
+    return;
+  }
+
+  if (line.startsWith("bestmove")) {
+    console.log("Best move:", line);
+    return;
+  }
+
+  if (line.includes("score cp")) {
+    const cp = parseInt(line.split("score cp ")[1]) / 100;
+
+    let label = "❌ Kļūda";
+    if (Math.abs(cp) < 0.2) label = "⭐ Precīzs";
+    else if (Math.abs(cp) < 0.6) label = "✔ Labs";
+    else if (Math.abs(cp) < 1.2) label = "⚠ Neprecīzs";
+
+    document.getElementById("eval").innerText =
+      `Novērtējums: ${cp.toFixed(2)} ${label}`;
+  }
+};
 
 engine.postMessage("uci");
-engine.postMessage("isready");
 
-function onDrop(source, target) {
-  const move = game.move({
-    from: source,
-    to: target,
-    promotion: 'q'
-  });
+// ====================
+// MOVE HANDLING
+// ====================
+function onDrop(from, to) {
+  if (!engineReady) {
+    alert("Stockfish vēl ielādējas, pagaidi 1–2 sekundes");
+    return 'snapback';
+  }
 
-  if (move === null) return 'snapback';
+  const move = game.move({ from, to, promotion: 'q' });
+  if (!move) return 'snapback';
 
   board.position(game.fen());
-  analyzePosition();
-}
 
-function analyzePosition() {
   engine.postMessage("position fen " + game.fen());
   engine.postMessage("go depth 15");
-
-  engine.onmessage = function (event) {
-    const line = event.data;
-
-    if (line.startsWith("info depth 15 score")) {
-      let score = line.includes("cp")
-        ? parseInt(line.split("cp")[1]) / 100
-        : "mate";
-
-      let text = "Novērtējums: " + score;
-
-      if (score !== "mate") {
-        if (Math.abs(score) < 0.2) text += " ⭐ Precīzs";
-        else if (Math.abs(score) < 0.6) text += " ✔ Labs";
-        else if (Math.abs(score) < 1.2) text += " ⚠ Neprecīzs";
-        else text += " ❌ Kļūda";
-      }
-
-      document.getElementById("eval").innerText = text;
-    }
-  };
 }
 </script>
 </body>
+
 </html>
