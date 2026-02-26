@@ -16,12 +16,22 @@ body { font-family: sans-serif; }
 </style>
 </head>
 
+<body>
+
+<h2>Uzmini gājienu</h2>
+<div id="board" style="width: 400px;"></div>
+<div id="eval">Izdari gājienu</div>
+
 <script>
+// ====================
+// Šaha loģika
+// ====================
 const game = new Chess();
 
 // Morphy – Konsultanti (balto gājiens)
 game.load("rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 0 4");
 
+// Šaha dēlis (Chessboard.js)
 const board = Chessboard('board', {
   draggable: true,
   position: game.fen(),
@@ -86,9 +96,6 @@ function onDrop(from, to) {
   engine.postMessage("go depth 15");
 }
 </script>
+
 </body>
-
 </html>
-
-
-
