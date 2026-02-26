@@ -1,0 +1,6 @@
+/* vienkāršs minimālais CSS, lai dēlis darbotos */
+.cb-board { width: 100%; max-width: 400px; margin: 0 auto; display: flex; flex-wrap: wrap; }
+.cb-square { width: 12.5%; padding-bottom: 12.5%; position: relative; }
+.cb-black { background: #769656; }
+.cb-white { background: #eeeed2; }
+.cb-piece { position: absolute; width: 100%; height: 100%; cursor: grab; user-select: none; }
