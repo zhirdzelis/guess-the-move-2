@@ -1,11 +1,21 @@
 <!DOCTYPE html>
 <html lang="lv">
 
+<head>
 <meta charset="UTF-8">
-<title>Guess the Move – Morphy</title>
+<title>Guess the Move</title>
 
 <link rel="stylesheet"
  href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard.min.js"></script>
+
+<style>
+body { font-family: sans-serif; }
+#eval { margin-top: 10px; font-size: 1.2em; }
+</style>
+</head>
 
 <script>
 const game = new Chess();
@@ -80,3 +90,4 @@ function onDrop(from, to) {
 </body>
 
 </html>
+
